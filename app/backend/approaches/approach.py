@@ -1,3 +1,4 @@
+# Importing necessary libraries and modules
 import os
 from abc import ABC
 from dataclasses import dataclass
@@ -27,9 +28,10 @@ from openai.types.chat import ChatCompletionMessageParam
 from core.authentication import AuthenticationHelper
 from text import nonewlines
 
-
+# Defining a dataclass for Document
 @dataclass
 class Document:
+    # Defining the attributes of the Document class
     id: Optional[str]
     content: Optional[str]
     embedding: Optional[List[float]]
@@ -43,6 +45,7 @@ class Document:
     score: Optional[float] = None
     reranker_score: Optional[float] = None
 
+    # Method to serialize the Document object for results
     def serialize_for_results(self) -> dict[str, Any]:
         return {
             "id": self.id,
@@ -70,27 +73,29 @@ class Document:
             "reranker_score": self.reranker_score,
         }
 
+    # Method to trim the embedding
     @classmethod
     def trim_embedding(cls, embedding: Optional[List[float]]) -> Optional[str]:
         """Returns a trimmed list of floats from the vector embedding."""
         if embedding:
             if len(embedding) > 2:
-                # Format the embedding list to show the first 2 items followed by the count of the remaining items."""
+                # Format the embedding list to show the first 2 items followed by the count of the remaining items.
                 return f"[{embedding[0]}, {embedding[1]} ...+{len(embedding) - 2} more]"
             else:
                 return str(embedding)
 
         return None
 
-
+# Defining a dataclass for ThoughtStep
 @dataclass
 class ThoughtStep:
     title: str
     description: Optional[Any]
     props: Optional[dict[str, Any]] = None
 
-
+# Defining the Approach class
 class Approach(ABC):
+    # Initializing the Approach class
     def __init__(
         self,
         search_client: SearchClient,
@@ -117,6 +122,7 @@ class Approach(ABC):
         self.vision_endpoint = vision_endpoint
         self.vision_token_provider = vision_token_provider
 
+    # Method to build filter
     def build_filter(self, overrides: dict[str, Any], auth_claims: dict[str, Any]) -> Optional[str]:
         exclude_category = overrides.get("exclude_category")
         security_filter = self.auth_helper.build_security_filters(overrides, auth_claims)
@@ -127,6 +133,7 @@ class Approach(ABC):
             filters.append(security_filter)
         return None if len(filters) == 0 else " and ".join(filters)
 
+    # Method to perform search
     async def search(
         self,
         top: int,
@@ -194,6 +201,7 @@ class Approach(ABC):
 
         return qualified_documents
 
+    # Method to get sources content
     def get_sources_content(
         self, results: List[Document], use_semantic_captions: bool, use_image_citation: bool
     ) -> list[str]:
@@ -210,6 +218,7 @@ class Approach(ABC):
                 for doc in results
             ]
 
+    # Method to get citation
     def get_citation(self, sourcepage: str, use_image_citation: bool) -> str:
         if use_image_citation:
             return sourcepage
@@ -222,6 +231,7 @@ class Approach(ABC):
 
             return sourcepage
 
+    # Method to compute text embedding
     async def compute_text_embedding(self, q: str):
         SUPPORTED_DIMENSIONS_MODEL = {
             "text-embedding-ada-002": False,
@@ -244,6 +254,7 @@ class Approach(ABC):
         query_vector = embedding.data[0].embedding
         return VectorizedQuery(vector=query_vector, k_nearest_neighbors=50, fields="embedding")
 
+    # Method to compute image embedding
     async def compute_image_embedding(self, q: str):
         endpoint = urljoin(self.vision_endpoint, "computervision/retrieval:vectorizeText")
         headers = {"Content-Type": "application/json"}
@@ -260,6 +271,7 @@ class Approach(ABC):
                 image_query_vector = json["vector"]
         return VectorizedQuery(vector=image_query_vector, k_nearest_neighbors=50, fields="imageEmbedding")
 
+    # Method to run the approach
     async def run(
         self,
         messages: list[ChatCompletionMessageParam],
@@ -268,6 +280,7 @@ class Approach(ABC):
     ) -> dict[str, Any]:
         raise NotImplementedError
 
+    # Method to run the approach stream
     async def run_stream(
         self,
         messages: list[ChatCompletionMessageParam],
